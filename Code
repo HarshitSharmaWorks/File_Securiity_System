@@ -1,0 +1,81 @@
+from Crypto.Cipher import AES, Blowfish
+from Crypto.Util.Padding import pad, unpad
+import base64
+import os
+
+def encrypt_aes(key, plaintext):
+    cipher_aes = AES.new(key, AES.MODE_ECB)
+    padded_plaintext = pad(plaintext.encode(), AES.block_size)
+    return cipher_aes.encrypt(padded_plaintext)
+
+def encrypt_blowfish(key, plaintext):
+    cipher_blowfish = Blowfish.new(key, Blowfish.MODE_ECB)
+    padded_plaintext = pad(plaintext.encode(), Blowfish.block_size)
+    return cipher_blowfish.encrypt(padded_plaintext)
+
+def decrypt_aes(key, ciphertext):
+    cipher_aes = AES.new(key, AES.MODE_ECB)
+    decrypted_data = cipher_aes.decrypt(ciphertext)
+    return unpad(decrypted_data, AES.block_size)
+
+def decrypt_blowfish(key, ciphertext):
+    cipher_blowfish = Blowfish.new(key, Blowfish.MODE_ECB)
+    decrypted_data = cipher_blowfish.decrypt(ciphertext)
+    return unpad(decrypted_data, Blowfish.block_size)
+
+def generate_key(size):
+    return os.urandom(size)
+
+def encrypt(plaintext, aes_key, blowfish_key):
+    split_index = len(plaintext) // 2
+    aes_plaintext = plaintext[:split_index]
+    blowfish_plaintext = plaintext[split_index:]
+
+    print("AES Plaintext part:\n", aes_plaintext, "\n")
+    print("Blowfish Plaintext part:\n", blowfish_plaintext, "\n")
+    
+    aes_result = encrypt_aes(aes_key, aes_plaintext)
+    print("AES Code:", aes_result, "\n")
+    
+    blowfish_result = encrypt_blowfish(blowfish_key, blowfish_plaintext)
+    print("Blowfish Code:", blowfish_result, "\n")
+    
+    encrypted_result = aes_result + b'|&#|' + blowfish_result    
+    encrypted_result_base64 = base64.b64encode(encrypted_result)    
+    return encrypted_result_base64
+
+def decrypt(ciphertext, aes_key, blowfish_key):
+    encrypted_result = base64.b64decode(ciphertext)
+    aes_ciphertext, blowfish_ciphertext = encrypted_result.split(b'|&#|')
+    decrypted_aes = decrypt_aes(aes_key, aes_ciphertext)
+    decrypted_blowfish = decrypt_blowfish(blowfish_key, blowfish_ciphertext)    
+    decrypted_parts = [decrypted_aes.decode(), decrypted_blowfish.decode()]
+    decrypted_text = ''.join(decrypted_parts)    
+    return decrypted_text
+
+
+def main():
+    try:
+        aes_key = generate_key(16) 
+        blowfish_key = generate_key(8)
+        
+        file_location = "D:\Projects\File Security System\sample.txt"
+        with open(file_location, "r") as file:
+            plaintext = file.read()
+            print("Plaintext from file:\n", plaintext, "\n")
+
+        encrypted_text = encrypt(plaintext, aes_key, blowfish_key)
+        print("Final Encrypted text:\n", encrypted_text, "\n")
+        
+        with open("encrypted_text.txt", "wb") as encrypted_file:
+            encrypted_file.write(encrypted_text)
+
+        decrypted_text = decrypt(encrypted_text, aes_key, blowfish_key)
+        print("Decrypted text:\n", decrypted_text, "\n")
+
+    except Exception as e:
+        print("An error occurred:", e)
+
+if __name__ == "__main__":
+    main()
+
